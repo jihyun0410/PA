@@ -326,11 +326,14 @@ def arc(root):
 
 def main():
     sys.setrecursionlimit(10000)
-    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8"), sys.stderr.reconfigure(encoding="utf-8")
     global SHOW_ALL
     a = sys.argv[1:]
     SHOW_ALL = "--all" in a
-    print(arc(Path(next((x for x in a if not x.startswith("--")), ".")).resolve()))
+    out = arc(Path(next((x for x in a if not x.startswith("--")), ".")).resolve())
+    print(out)
+    Path("PA.txt").write_text(out, encoding="utf-8")  # 실행한 폴더에 저장
+    print("-> PA.txt 저장 완료", file=sys.stderr)
 
 
 if __name__ == "__main__":
