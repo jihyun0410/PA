@@ -297,18 +297,29 @@ def path_of(ann):
 
 def arc(root):
     load(root)
-    out = []
+    out, seen = [], set()
     for k in CLS.values():
-        if not {"RestController", "Controller"} & k.anns.keys():
+        if not {"RestController", "Controller", "RequestMapping"} & k.anns.keys():
             continue
         base, eps = path_of(k.anns.get("RequestMapping")), []
         for ms in k.methods.values():
             for m in ms:
-                for name, atxt in annotations(m):
-                    if name in HTTP:
-                        label = f"{HTTP[name]} {base}{path_of(atxt)}  {text(m.child_by_field_name('name'))}({sig(m)})"
-                        eps.append(N(label, expand(k, m, frozenset())))
-        out += [k.file] + lines(eps) + [""]
+                anns = dict(annotations(m))
+                verb = next((HTTP[a] for a in anns if a in HTTP), None)
+                if not verb and "Operation" not in anns:  # API 시작점 = 매핑 또는 @Operation 메서드
+                    continue
+                path = next((path_of(t) for a, t in anns.items() if a in HTTP), "")
+                label = f"{verb + ' ' if verb else ''}{base}{path}  {text(m.child_by_field_name('name'))}({sig(m)})"
+                if label in seen:  # 인터페이스와 구현체에 같은 선언이 중복될 때
+                    continue
+                seen.add(label)
+                # API 인터페이스처럼 본문이 없으면 구현체 메서드로 따라간다
+                ts = [(k, m)] if m.child_by_field_name("body") else targets(k.name, text(m.child_by_field_name("name")), len(params(m)))
+                if ts and ts[0][0] is not k:
+                    label += f"  [{ts[0][0].file}]"
+                eps.append(N(label.strip(), [x for k2, m2 in ts for x in expand(k2, m2, frozenset())]))
+        if eps:
+            out += [k.file] + lines(eps) + [""]
     return "\n".join(out) or "Controller(@RestController/@Controller)를 찾지 못했습니다."
 
 

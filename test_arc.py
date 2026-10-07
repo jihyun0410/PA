@@ -18,6 +18,18 @@ public class EqpController {
     return dto;
   }
 }""",
+    "src/main/java/a/EqpApi.java": """
+@RequestMapping("/v2")
+public interface EqpApi {
+  @Operation(summary = "x") @GetMapping("/eqp/{id}")
+  EqpDto getEqp(@PathVariable Long id);
+}""",
+    "src/main/java/a/EqpApiController.java": """
+@RestController
+public class EqpApiController implements EqpApi {
+  private final EqpService eqpService;
+  public EqpDto getEqp(Long id) { return eqpService.find(id); }
+}""",
     "src/main/java/a/EqpService.java": "interface EqpService { EqpDto find(Long id); java.util.List<Long> ids(); void touch(Long id); }",
     "src/main/java/a/EqpServiceImpl.java": """
 @Service class EqpServiceImpl implements EqpService {
@@ -45,8 +57,10 @@ def test_arc():
     for want in ["EqpController.java", "GET /eqp/{id}  get(Long id)", "if (id == null)", "throw new IllegalArgumentException",
                  "dto = eqpService.find(id)  [EqpServiceImpl.java]", "else if (id == 0)", "else",
                  "return new EqpDto()  [EqpDto.java]", "eqpRepository.findById(id)  [EqpRepository.java]",
-                 "for (Long x : eqpService.ids())", 'case "A"', "default", "catch (Exception e)", "finally"]:
+                 "for (Long x : eqpService.ids())", 'case "A"', "default", "catch (Exception e)", "finally",
+                 "EqpApi.java", "GET /v2/eqp/{id}  getEqp(Long id)  [EqpApiController.java]"]:
         assert want in out, want
+    assert "return eqpService.find(id)  [EqpServiceImpl.java]" in out.split("EqpController.java")[0]  # API 인터페이스 -> 구현체 추적
     assert "/src/" not in out and "log.error" not in out  # 경로/외부호출은 숨김
 
 
