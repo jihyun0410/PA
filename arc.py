@@ -48,7 +48,7 @@ def tname(t):  # List<Foo> -> List, a.b.Foo -> Foo
 
 def annotations(n):
     mods = next((c for c in n.children if c.type == "modifiers"), None)
-    return [(text(a.child_by_field_name("name")), text(a))
+    return [(text(a.child_by_field_name("name")).split(".")[-1], text(a))
             for a in (mods.children if mods else []) if a.type in ("annotation", "marker_annotation")]
 
 
@@ -299,8 +299,6 @@ def arc(root):
     load(root)
     out, seen = [], set()
     for k in CLS.values():
-        if not {"RestController", "Controller", "RequestMapping"} & k.anns.keys():
-            continue
         base, eps = path_of(k.anns.get("RequestMapping")), []
         for ms in k.methods.values():
             for m in ms:
@@ -320,7 +318,7 @@ def arc(root):
                 eps.append(N(label.strip(), [x for k2, m2 in ts for x in expand(k2, m2, frozenset())]))
         if eps:
             out += [k.file] + lines(eps) + [""]
-    return "\n".join(out) or "Controller(@RestController/@Controller)를 찾지 못했습니다."
+    return "\n".join(out) or f"API 시작점(@*Mapping/@Operation 메서드)을 찾지 못했습니다. (파싱한 클래스 {len(CLS)}개)"
 
 
 def main():
