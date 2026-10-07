@@ -37,10 +37,6 @@ def flat(x):
     return " ".join((x if isinstance(x, str) else text(x)).split())
 
 
-def cut(s, lim):
-    return s if len(s) <= lim else s[:lim] + "…"
-
-
 def tname(t):  # List<Foo> -> List, a.b.Foo -> Foo
     m = re.match(r"[\w.]+", text(t))
     return m.group().split(".")[-1] if m else None
@@ -182,7 +178,7 @@ def kids(n, c, skip=()):
 
 
 def head(n, body):  # 본문 직전까지의 헤더 텍스트: for (...), catch (...) 등
-    return cut(flat(n.text[: body.start_byte - n.start_byte].decode()), 100)
+    return flat(n.text[: body.start_byte - n.start_byte].decode())
 
 
 def tag(e, r, prefix):  # 'dto = ', 'return ' 접두를 e가 만든 호출 노드에 붙인다
@@ -194,7 +190,7 @@ def tag(e, r, prefix):  # 'dto = ', 'return ' 접두를 e가 만든 호출 노�
 
 def if_(n, c, kw):
     cond = n.child_by_field_name("condition")
-    out = w(cond, c) + [N(f"{kw} {cut(flat(cond), 100)}", w(n.child_by_field_name("consequence"), c))]
+    out = w(cond, c) + [N(f"{kw} {flat(cond)}", w(n.child_by_field_name("consequence"), c))]
     alt = n.child_by_field_name("alternative")
     if alt is not None:
         if alt.type == "if_statement":
@@ -216,14 +212,14 @@ def w(n, c):
         return kids(n, c, [body]) + [N(head(n, body), w(body, c))]
     if t == "do_statement":
         cond = n.child_by_field_name("condition")
-        return [N("do-while " + cut(flat(cond), 100), w(n.child_by_field_name("body"), c))] + w(cond, c)
+        return [N("do-while " + flat(cond), w(n.child_by_field_name("body"), c))] + w(cond, c)
     if t in SWITCH:
         cond, cases = n.child_by_field_name("condition"), []
         for g in n.child_by_field_name("body").named_children:
             labels = [re.sub(r"\s*(:|->)$", "", flat(x)) for x in g.children if x.type == "switch_label"]
             rest = [x for x in g.named_children if x.type != "switch_label"]
             cases.append(N("; ".join(labels), [y for s in rest for y in w(s, c)]))
-        return w(cond, c) + [N("switch " + cut(flat(cond), 100), cases)]
+        return w(cond, c) + [N("switch " + flat(cond), cases)]
     if t in TRY:
         out = w(n.child_by_field_name("resources"), c) + [N("try", w(n.child_by_field_name("body"), c))]
         for ch in n.named_children:
@@ -236,13 +232,13 @@ def w(n, c):
     if t == "ternary_expression":
         cond, a, b = (n.child_by_field_name(x) for x in ("condition", "consequence", "alternative"))
         ka, kb = w(a, c), w(b, c)
-        return w(cond, c) + ([N("? " + cut(flat(cond), 100), [N("true", ka), N("false", kb)])] if ka or kb else [])
+        return w(cond, c) + ([N("? " + flat(cond), [N("true", ka), N("false", kb)])] if ka or kb else [])
     if t in ("return_statement", "throw_statement"):
         e = n.named_children[0] if n.named_children else None
         r, word = w(e, c), t.split("_")[0]
         if word == "return" and e is not None and tag(e, r, "return "):
             return r
-        return r + [N(f"{word} {cut(flat(e), 60)}".strip())]
+        return r + [N(f"{word} {flat(e)}".strip())]
     if t == "variable_declarator":
         v = n.child_by_field_name("value")
         r = w(v, c)
@@ -257,8 +253,8 @@ def w(n, c):
     if t == "method_invocation":
         obj, args = n.child_by_field_name("object"), n.child_by_field_name("arguments")
         name = text(n.child_by_field_name("name"))
-        who = "" if obj is None else flat(obj) if obj.type in ("identifier", "field_access", "this") else "…"
-        label = f"{who + '.' if who else ''}{name}({cut(flat(args)[1:-1], 40)})"
+        who = "" if obj is None else flat(obj)
+        label = f"{who + '.' if who else ''}{name}({flat(args)[1:-1]})"
         r = recv(n, k, sc)
         ts = targets(r, name, args.named_child_count)
         if ts:
@@ -272,7 +268,7 @@ def w(n, c):
         return w(obj, c) + w(args, c) + nodes
     if t == "object_creation_expression":
         tn, args = tname(n.child_by_field_name("type")), n.child_by_field_name("arguments")
-        label = f"new {tn}({cut(flat(args)[1:-1], 40)})"
+        label = f"new {tn}({flat(args)[1:-1]})"
         if tn in CLS:
             return kids(n, c) + [N(f"{label}  [{CLS[tn].file}]", [], True, n.id)]
         return kids(n, c) + ([N(label, [], True, n.id)] if SHOW_ALL else [])
@@ -320,7 +316,10 @@ def arc(root):
                     label += f"  [{ts[0][0].file}]"
                 eps.append(N(label.strip(), [x for k2, m2 in ts for x in expand(k2, m2, frozenset())]))
         if eps:
-            out += [k.file] + lines(eps) + [""]
+            out += ["━" * 70, f"■ {k.file}", "━" * 70]
+            for e in eps:  # API마다 배너로 구분
+                out += ["", f"▶ {e.label}"] + lines(e.kids)
+            out.append("")
     return "\n".join(out) or f"API 시작점(@*Mapping/@Operation 메서드)을 찾지 못했습니다. (검색 경로: {root} / 클래스 {len(CLS)}개 / 제외된 .java {skipped}개)"
 
 
