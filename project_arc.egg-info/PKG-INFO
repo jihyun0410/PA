@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: project-arc
+Version: 0.1.0
+Requires-Python: >=3.9
+Requires-Dist: tree-sitter>=0.23
+Requires-Dist: tree-sitter-java>=0.23

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "project-arc"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = ["tree-sitter>=0.23", "tree-sitter-java>=0.23"]
+
+[project.scripts]
+arc = "arc:main"
+project-arc = "arc:main"
+
+[tool.setuptools]
+py-modules = ["arc"]

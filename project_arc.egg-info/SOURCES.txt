@@ -1,0 +1,8 @@
+arc.py
+pyproject.toml
+project_arc.egg-info/PKG-INFO
+project_arc.egg-info/SOURCES.txt
+project_arc.egg-info/dependency_links.txt
+project_arc.egg-info/entry_points.txt
+project_arc.egg-info/requires.txt
+project_arc.egg-info/top_level.txt
