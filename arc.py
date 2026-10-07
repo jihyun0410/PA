@@ -82,9 +82,11 @@ class Cls:
 
 def load(root):
     CLS.clear(), SUB.clear()
+    skipped = 0
     for f in sorted(root.rglob("*.java")):
         p = "/" + f.relative_to(root).as_posix()
         if any(x in p for x in ("/src/test/", "/build/", "/target/")):
+            skipped += 1
             continue
         todo = [PARSER.parse(f.read_bytes()).root_node]
         while todo:
@@ -96,6 +98,7 @@ def load(root):
     for k in CLS.values():
         for s in k.supers:
             SUB.setdefault(s, []).append(k)
+    return skipped
 
 
 # ---------- 타입/호출 대상 해석 ----------
@@ -296,7 +299,7 @@ def path_of(ann):
 
 
 def arc(root):
-    load(root)
+    skipped = load(root)
     out, seen = [], set()
     for k in CLS.values():
         base, eps = path_of(k.anns.get("RequestMapping")), []
@@ -318,7 +321,7 @@ def arc(root):
                 eps.append(N(label.strip(), [x for k2, m2 in ts for x in expand(k2, m2, frozenset())]))
         if eps:
             out += [k.file] + lines(eps) + [""]
-    return "\n".join(out) or f"API 시작점(@*Mapping/@Operation 메서드)을 찾지 못했습니다. (파싱한 클래스 {len(CLS)}개)"
+    return "\n".join(out) or f"API 시작점(@*Mapping/@Operation 메서드)을 찾지 못했습니다. (검색 경로: {root} / 클래스 {len(CLS)}개 / 제외된 .java {skipped}개)"
 
 
 def main():
